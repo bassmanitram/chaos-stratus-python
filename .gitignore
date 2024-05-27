@@ -1,0 +1,3 @@
+src/chaos_stratus/__pycache__/*
+src/chaos_stratus.egg-info/*
+dist/*
