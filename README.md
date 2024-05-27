@@ -8,7 +8,7 @@ By "appropriately compiled" we mean built with the Stratus build tools available
 (Note that prior to the full Faust integration of the Stratus development tools, effects libraries were built in such a way as to NOT be fully compatible with these tools).
 # Installation
 
-You can install this package using standard a `pip` invocation
+You can install this package using a standard `pip` invocation
 
 
 ```
@@ -18,13 +18,13 @@ python -m pip install chaos-stratus
 
 The main class of these tools is `Effect`.
 
-You include that into you python script in the standard manner:
+You include that into your python script in the standard manner:
 
 ```python
 from chaos_stratus import Effect
 ```
 
-You instantiate the class for a specific library as follows:
+You instantiate the class for a specific effect library as follows:
 
 ```python
 effect = Effect("path/to/my/effect.so")
@@ -96,7 +96,7 @@ To use that with, say, a `wav` input file and pump the output to the default out
 * install [sox](https://sourceforge.net/projects/sox/)
 * write a Python script based on the above sample code
 * Find a suitable `wav` file (or any other format that Sox supports out of the box)
-* Run it all like this from the (_stratus command line:
+* Run it all like this from the (shell) command line:
 
 ```sh
 sox your-sounds.wav -b32 -e floating-point -r 44100 -t raw - | \
