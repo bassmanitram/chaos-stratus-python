@@ -1,12 +1,16 @@
 import sys
-from stratus import Effect
+from . import Effect
 
 if __name__ == '__main__':
     lib = sys.argv[1]
     effect = Effect(lib)
-    print(f'Stratus effect library {lib}:')
-    print(f'  Effect name:....... {effect.name}')
-    print(f'  Effect ID:......... {effect.effectId}')
-    print(f'  Effect version:.... {effect.version}')
-    print(f'  Number of knobs:... {effect.knobCount}')
-    print(f'  Number of switches: {effect.switchCount}')
+    print('Stratus effect library {}:'.format(lib))
+    if effect.extensionsPresent:
+        print('  Effect name:....... {}'.format(effect.name))
+        print('  Effect ID:......... {}'.format(effect.effectId))
+        print('  Effect version:.... {}'.format(effect.version))
+        print('  Number of knobs:... {}'.format(effect.knobCount))
+        print('  Number of switches: {}'.format(effect.switchCount))
+    else:
+        print('  StratusExtensions attributes are not present')
+

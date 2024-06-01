@@ -3,9 +3,21 @@
 
 This package provides tools for interacting with (appropriately compiled) [Chaos Audio Stratus pedal](https://chaosaudio.com/) effects libraries. 
 
-By "appropriately compiled" we mean built with the Stratus build tools available with the most recent versions of [Faust](https://faust.grame.fr/), or with the [Faust IDE](https://faustide.grame.fr/).
+By "appropriately compiled" we mean built with the Stratus build tools available with the most recent versions of [Faust](https://faust.grame.fr/), 
+or with the [Faust IDE](https://faustide.grame.fr/).
 
-(Note that prior to the full Faust integration of the Stratus development tools, effects libraries were built in such a way as to NOT be fully compatible with these tools).
+Effects that are _not_ built with the Faust tools (e.g. those built before those tools became available) are still at least _partially_ compatible
+with the library - they may not provide the documented class attributes, but they will provide the operational functions that allow you
+to interact with them.
+
+In _all_ cases, though, the effect must be built for the platform upon which this class is used - that means performing a "local" build with the
+Faust tools (or by some other means) or installing this package on the Stratus pedal itself.
+
+# LATEST NEWS
+## version 1.1.0
+The package now supports effects not built with the Faust tools.
+The package now requires Python 3.8 as a minimum
+
 # Installation
 
 You can install this package using a standard `pip` invocation

@@ -1,17 +1,70 @@
 from ctypes import *
 from sys import argv
+import subprocess
+import re
 
 InstanceHandle = c_void_p
 FloatPointer = POINTER(c_float)
 
 class EffectLib:
+    #
+    # For each namespace, try to find the specified function
+    # until one actually elicits the function
+    #
+    def _find_func(self, func_name, args):
+        for ns in self.nameSpaces:
+            symb = '_ZN{}{}{}{}{}'.format(len(ns),ns,len(func_name),func_name,args)
+            func = getattr(self.lib,symb, None)
+            if func is not None:
+                return func
+        return None
+    
+    #
+    # Basically we troll through the SO file and dig out all the
+    # _ZTI.... symbols - these are, effectively, the symbol namespaces
+    # we have to deal with. In FACT, because of the way we trim out two
+    # "well known" namespaces, there should only be a max of one other
+    # found.
+    #
+    def _find_namespaces(self, file):
+        namespaces = []
+        with open(file, "rb") as f:
+            TAG = [b'_',b'Z',b'T',b'I']
+            NC = 0
+            while True: 
+                c = f.read(1)
+                if c == b'':
+                    break
+                if c == TAG[NC]:
+                    NC+=1
+                    if NC >= len(TAG):
+                        # we found one
+                        l = 0
+                        n = f.read(1)
+                        while n >= b'0' and n<= b'9':
+                            l = (l * 10) + int(n)
+                            n = f.read(1)
+                        NS = (n + f.read(l-1)).decode("ascii")
+                        if NS != "StratusExtensions" and NS != "dsp" and not NS in namespaces:
+                            namespaces.append(NS)
+                        NC = 0
+                else:
+                    NC = 0
+        namespaces.append("dsp")
+        return namespaces
+
     def __init__(self,so_file):
+
         lib = CDLL(so_file)
+
+        self.lib = lib
         self.create = lib.create
         try:
             self.getExtensions = lib.getExtensions
         except:
             self.getExtensions = None
+
+        self.nameSpaces = self._find_namespaces(so_file)
 
         #
         # Using StratusExtensions
@@ -32,14 +85,14 @@ class EffectLib:
         #
         # Using the effect
         #
-        self.stratusSetKnob = getattr(lib,"_ZN3dsp7setKnobEif")
-        self.stratusGetKnob = getattr(lib,"_ZN3dsp7getKnobEi")
-        self.stratusSetSwitch = getattr(lib,"_ZN3dsp9setSwitchEiNS_12SWITCH_STATEE")
-        self.stratusGetSwitch = getattr(lib,"_ZN3dsp9getSwitchEi")
-        self.stratusSetStompSwitch = getattr(lib,"_ZN3dsp14setStompSwitchENS_12SWITCH_STATEE")
-        self.stratusGetStompSwitch = getattr(lib,"_ZN3dsp14getStompSwitchEv")
-        self.stratusStompSwitchPressed = getattr(lib,"_ZN3dsp18stompSwitchPressedEiPfS0_")
-        self.stratusCompute = getattr(lib,"_ZN3dsp7computeEiPfS0_")
+        self.stratusSetKnob = self._find_func("setKnob","Eif")
+        self.stratusGetKnob = self._find_func("getKnob","Ei")
+        self.stratusSetSwitch = self._find_func("setSwitch","EiNS_12SWITCH_STATEE")
+        self.stratusGetSwitch = self._find_func("getSwitch","Ei")
+        self.stratusSetStompSwitch = self._find_func("setStompSwitch","ENS_12SWITCH_STATEE")
+        self.stratusGetStompSwitch = self._find_func("getStompSwitch","Ev")
+        self.stratusStompSwitchPressed = self._find_func("stompSwitchPressed","EiPfS0_")
+        self.stratusCompute = self._find_func("compute","EiPfS0_")
 
         self.create.restype = InstanceHandle
         if self.getExtensions is not None:
@@ -61,52 +114,69 @@ class EffectLib:
             self.stratusGetSwitchCount.argtypes = [InstanceHandle]
             self.stratusGetSwitchCount.restype= c_uint
 
-        self.stratusSetKnob.argtypes = [InstanceHandle, c_uint, c_float]
+        if self.stratusSetKnob is not None:
+            self.stratusSetKnob.argtypes = [InstanceHandle, c_uint, c_float]
 
-        self.stratusGetKnob.argtypes = [InstanceHandle, c_uint]
-        self.stratusGetKnob.restype = c_float
+        if self.stratusGetKnob is not None:
+            self.stratusGetKnob.argtypes = [InstanceHandle, c_uint]
+            self.stratusGetKnob.restype = c_float
 
-        self.stratusSetSwitch.argtypes = [InstanceHandle, c_uint, c_uint]
+        if self.stratusSetSwitch is not None:
+            self.stratusSetSwitch.argtypes = [InstanceHandle, c_uint, c_uint]
 
-        self.stratusGetSwitch.argtypes = [InstanceHandle, c_uint]
-        self.stratusGetSwitch.restype= c_uint
+        if self.stratusGetSwitch is not None:
+            self.stratusGetSwitch.argtypes = [InstanceHandle, c_uint]
+            self.stratusGetSwitch.restype= c_uint
 
-        self.stratusSetStompSwitch.argtypes = [InstanceHandle, c_uint]
+        if self.stratusSetStompSwitch is not None:
+            self.stratusSetStompSwitch.argtypes = [InstanceHandle, c_uint]
 
-        self.stratusGetStompSwitch.argtypes = [InstanceHandle]
-        self.stratusGetStompSwitch.restype = c_uint
+        if self.stratusGetStompSwitch is not None:
+            self.stratusGetStompSwitch.argtypes = [InstanceHandle]
+            self.stratusGetStompSwitch.restype = c_uint
 
-        self.stratusStompSwitchPressed.argtypes = [InstanceHandle, c_uint, FloatPointer, FloatPointer]
-        self.stratusCompute.argtypes = [InstanceHandle, c_uint, FloatPointer, FloatPointer]
+        if self.stratusCompute is not None:
+            self.stratusCompute.argtypes = [InstanceHandle, c_uint, FloatPointer, FloatPointer]
+            self.stratusCompute.argtypes = [InstanceHandle, c_uint, FloatPointer, FloatPointer]
 
 
 class Effect:
     """A class that allows a Python script to interact with a Chaos Stratus effect library
 
     Chaos Audio Stratus pedal effects libraries are standard binary shared libraries that 
-    implement a specific interface. Faust - the DSP design system - has a tight integration
-    with such effects. While it is not necessary to design or build effects with Faust, if
-    they are at least built with the same wrapper interface used by the Faust DSP system, then 
-    they are compatible with this class.
+    implement a specific interface. Given an effect library file, this module does all that
+    it can to find the function symbols in the library that represent the implementations of 
+    that interface and thus provide a Python wrapper to the library to allow you to test the
+    library outside of the constraints of the Stratus pedal itself.
 
-    Note also that the effect has to be built for the system upon which your python script isd
+    All effects that are built using the Faust integration for the Chaos Stratus are compatible
+    with this module. In addition, effects not built using Faust (including those built before
+    the Faust integration was available) should be "compatible enough" with the wrapper to be
+    usable - they may not implement the StratusExtensions interface that provides useful information
+    such as number of knobs and switches or what have you, but they do implement the basic
+    functional interface, and this module does its level best to find that implementation in the 
+    shared library.
+
+    Note that the effect has to be built for the system upon which your python script isd
     to run - that means you must either install this package onto your pedal, or you must
     build your effect library for the intended python system.
 
     Again, the Faust tools can help you with this.
 
-    Attributes
-    ----------
+    Attributes (only available through the StratusExtensions interface)
+    -------------------------------------------------------------------
+    effectId : string 
+        the UUID of the effect library
+    extensionsPresent : boolean 
+        whether or not the StratusExtensions interface is present
     knobCount : int 
         the number of control knobs the effect uses
+    name : string 
+        the friendly name of the effect library
     switchCount : int 
         the number of control switches the effect uses
     version : string
         the version of the effect library
-    effectId : string 
-        the UUID of the effect library
-    name : string 
-        the friendly name of the effect library
 
     Constructor
     -----------
@@ -142,6 +212,7 @@ class Effect:
         self.effect_lib = EffectLib(so_file)
 
         self.effect = self.effect_lib.create()
+        
         if self.effect_lib.getExtensions is not None:
             effectExtensions = self.effect_lib.getExtensions(self.effect)
             self.knobCount = self.effect_lib.stratusGetKnobCount(effectExtensions)
